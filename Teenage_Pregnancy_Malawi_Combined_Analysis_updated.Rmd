@@ -1,0 +1,2127 @@
+---
+title: "Teenage Pregnancy in Malawi: Risk Factor and Spatial Analysis"
+author: "B.Banda"
+date: "Malawi MICS 2019-2020"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    theme: united
+    code_folding: show
+    df_print: paged
+    keep_md: false
+editor_options:
+  chunk_output_type: inline
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  fig.width = 10,
+  fig.height = 6,
+  fig.align = "center"
+)
+
+# Set working directory so all relative paths (.shp, .sav, output figures)
+# resolve to the MICS data folder regardless of where chunks are run.
+knitr::opts_knit$set(root.dir = "C:/Users/b.banda/Box/Bernard_Banda_Files/MICS_Spatial_Analysis")
+```
+
+# PART I: Background and Methods
+
+## Study Overview / Background
+
+Adolescent pregnancy remains a pressing global public health concern,
+with an estimated 16 million girls aged 15-19 giving birth each year,
+the majority in low- and middle-income countries. In Malawi, teenage
+pregnancy carries serious consequences for maternal and child health,
+education, and socioeconomic mobility. Despite national efforts to
+expand reproductive health services and adolescent-friendly programming,
+the prevalence of teenage pregnancy remains high, and substantial
+geographic variation persists across districts and sub-district
+administrative units.
+
+This analysis uses the 2019-2020 Malawi Multiple Indicator Cluster
+Survey (MICS) to (i) quantify the prevalence of teenage pregnancy among
+adolescent females (15-19 years) and identify socio-demographic and
+economic risk factors using survey-weighted logistic regression, and
+(ii) characterise the spatial distribution of teenage pregnancy at the
+Traditional Authority (TA) level using global and local indicators of
+spatial autocorrelation to identify hotspots and coldspots.
+
+## Methods
+
+This study used data from the 2019-2020 Malawi MICS, a nationally
+representative household survey conducted by the National Statistical
+Office with support from UNICEF. The MICS employed a two-stage
+stratified cluster sampling design: enumeration areas (clusters) were
+selected within geographic strata (district x urbanicity combinations),
+and households were then selected by systematic sampling within each
+cluster. The survey collected data from 25,626 women aged 15-49 across
+1,111 enumeration area clusters.
+
+This analysis examined a subsample of adolescent females aged 15-19 (n =
+5,770 respondents from 1,086 clusters across 333 Traditional
+Authorities). Teenage pregnancy was defined as any female aged 15-19 who
+reported either ever having given birth (CM1 = 1) or currently being
+pregnant. Women with missing data on age, pregnancy status, or key
+sociodemographic variables were excluded (n = 12; final analytical
+sample: 5,758 women).
+
+### Survey Design Specification
+
+To properly account for the complex sampling structure, a survey design
+object was constructed in R specifying the primary sampling unit (HH1,
+the enumeration area cluster), strata (39 district x urbanicity
+combinations), and individual woman weights (`wmweight`), with clusters
+nested within strata (`nest = TRUE`). Individual weights ranged from
+0.089 to 16.026 (mean = 2.01), indicating a non-self-weighting design
+requiring statistical adjustment.
+
+### Risk Factor Analysis
+
+Sociodemographic and economic exposures included education level, wealth
+index quintile, place of residence (urbanicity), current marital status,
+health insurance coverage, and contraceptive use. Survey-weighted
+prevalence of teenage pregnancy was estimated overall and stratified by
+each exposure using `svyby()` with `svyciprop` (logit-based 95% CI).
+Bivariate associations were tested using Pearson χ² applied to
+survey-weighted contingency tables (`svytable()` + `chisq.test()`).
+Survey-weighted logistic regression (`svyglm`, family = quasibinomial)
+was used for both unadjusted (Model 1, separate univariable models) and
+fully adjusted (Model 2, single multivariable model) specifications. 95%
+confidence intervals were computed using Wald-type variance estimates
+with the Taylor-series linearisation method implemented in the `survey`
+package, accounting for the complex two-stage stratified cluster design.
+Reference categories were set *a priori* using the most-protected or
+most-prevalent stratum: Education = Primary or lower; Wealth Index =
+Richest; Place of Residence = Urban; Marital status = No - not in union;
+Contraceptive use = No; Health insurance = No. Item-level missingness
+was low (\<2% on all covariates; see Section 6); the multivariable model
+used a complete-case analytic sample with the unweighted and weighted
+sample sizes reported in the Table 3 footer.
+
+### Spatial Analysis
+
+Individual pregnancy status and survey weights were linked to cluster
+identifiers (HH1) and Traditional Authority (TA) names via the GPS
+cluster dataset (`MalawiMICS2019-20GPS.shp`). After merging, 1,095
+clusters mapped to 333 unique Traditional Authorities. To account for
+GPS jittering applied in MICS for confidentiality (+/- 2-10 km urban,
++/- 5 km rural), prevalence estimates were aggregated to the TA level.
+For each TA we computed the survey-weighted prevalence of pregnancy, 95%
+confidence intervals, unweighted sample size, and count of pregnant
+teens. TAs with fewer than 10 teen respondents were flagged as "very
+small" and those with 10-19 respondents as "small," but all TAs with at
+least one respondent were retained to avoid selection bias.
+
+TA boundary polygons were obtained from `mics_boundaries_nr.shp`.
+Polygons were aggregated to one geometry per unique TA name using
+spatial union (TA Nkula was excluded due to topology errors; final n =
+331 unique TAs in WGS84). Prevalence values were standardised using
+Z-score transformation prior to spatial statistical testing.
+
+Spatial relationships were defined using K-nearest neighbours (KNN-5)
+based on TA centroids, with row-standardised weights (style = `"W"`).
+Global Moran's I was tested using both the asymptotic test (assuming
+normality) and a Monte Carlo permutation test (999 simulations). Local
+Indicators of Spatial Association (LISA) were computed for each TA,
+classifying each into High-High (Hotspot), Low-Low (Coldspot), High-Low
+or Low-High (Spatial Outlier), or Not Significant categories based on
+quadrant position and statistical significance (alpha = 0.05).
+
+### Statistical Software
+
+All analyses were performed in R (version 4.4.0). Survey-weighted
+descriptive and inferential statistics were computed with the `survey`
+package (Lumley, 2024) and `srvyr`. Data manipulation and tabulation
+used `tidyverse`, `haven`, `janitor`, `scales`, `gtsummary`, and `gt`.
+Spatial preprocessing, autocorrelation statistics, and mapping used
+`sf`, `spdep`, `sfdep`, `ggplot2`, `patchwork`, and `ggspatial`.
+Missingness was visualised with `mice::md.pattern()` (no imputation was
+performed; see Section 6). All tables and plots are generated
+reproducibly from this R Markdown document.
+
+## Exposure Variables
+
+The pre-specified exposures examined in the multivariable model (Table
+3, Model 2) were:
+
+-   **Education**: Primary or lower (reference) vs. Secondary or higher
+-   **Wealth Index**: Richest (reference), Fourth, Middle, Second,
+    Poorest (derived from household asset ownership and housing
+    characteristics)
+-   **Place of Residence**: Urban (reference) vs. Rural
+-   **Marital status**: No - not in union (reference), Yes - currently
+    married, Yes - living with partner
+-   **Contraceptive use**: No (reference) vs. Yes (currently using any
+    contraceptive method)
+-   **Health insurance**: No (reference) vs. Yes
+
+An additional exposure, *Ever had sex* (No vs. Yes), is reported in the
+descriptive Table 2 but excluded from the multivariable model on
+conceptual grounds: sexual debut sits on the causal pathway between
+sociodemographic exposures and pregnancy and would induce overadjustment
+bias if included alongside the upstream exposures. All exposures are
+treated as categorical, with reference categories chosen *a priori*
+based on the most-protected or modal stratum.
+
+## Outcome Variable
+
+The primary outcome is teenage pregnancy, defined among females aged
+15-19 in the MICS Women's dataset as any respondent who reported having
+ever given birth (CM1 = 1) OR currently being pregnant. This composite
+outcome captures both past pregnancy experience and current pregnancy
+status, reflecting the full burden of adolescent fertility in this age
+group.
+
+# PART II: Data Preparation
+
+## 1. Load Required Packages
+
+We used the following packages in our analysis to enable data
+manipulation, survey-weighted estimation, publication-quality tables,
+multiple imputation, spatial analysis, and visualization. The pacman
+package manager automatically installs any missing packages and loads
+them into the R environment.
+
+```{r load-packages, message=FALSE, warning=FALSE}
+# Load required packages using pacman for convenience
+pacman::p_load(
+  # Data manipulation and utilities
+  data.table, tidyverse, purrr, haven, janitor, labelled,
+
+  # Survey analysis and weighted estimation
+  survey, srvyr,
+
+  # Publication tables and formatting
+  gtsummary, gt, kableExtra, knitr,
+
+  # Spatial analysis and mapping
+  sf, sfdep, spdep, leaflet, ggspatial, ggrepel,
+
+  # Visualization
+  ggplot2, patchwork,
+
+  # Statistical methods
+  mice,
+
+  # Other utilities
+  DiagrammeR
+)
+```
+
+## 2. Read Women's Dataset and Select Variables
+
+We imported the MICS 2019–20 Women's dataset from an SPSS (.sav) file
+and restricted the sample to adolescent females aged 15–19, retaining
+only the variables required for analysis: cluster identifier, household
+number, birth history, pregnancy status, age, education, urbanicity,
+marital status, health insurance, contraceptive use, sexual activity,
+sampling weight, wealth index, and stratum.
+
+```{r read-women-data, message=FALSE}
+WM <- read_sav("wm.sav") %>%
+  clean_names()
+
+wm_small <- WM %>%
+  filter(wb4 >= 15 & wb4 <= 19) %>%
+  select(
+    hh1, hh2, cm1, cp1, wb3m, wb3y, wb4, wb6a, wb14, wb16, wb17, wb18,
+    cp3, ma11, sb1, wmweight, windex5, ma1, stratum
+  )
+```
+
+## 3. Open MICS Shapefile and GIS Data
+
+We loaded two spatial datasets: the GPS cluster shapefile containing
+enumeration area coordinates (`MalawiMICS2019-20GPS.shp`), which links
+each cluster to its geographic location and Traditional Authority name
+(`GEONAMET`), and the TA boundary polygons (`mics_boundaries_nr.shp`)
+used for choropleth mapping and spatial analysis.
+
+```{r open-gis-data, message=FALSE, results='hide'}
+sf_data <- st_read("MalawiMICS2019-20GPS.shp")
+
+# 2) Read
+sf_mics_boundaries <- st_read("mics_boundaries_nr.shp", quiet = TRUE)
+
+#sf_mics_boundaries_2 <- st_read ("1mics_boundaries_nr.shp", queit = TRUE)
+```
+
+## 4. Derive Analytic Variables (`wm_clean`)
+
+We recoded all raw MICS variables into analysis-ready categorical
+variables, including the composite teenage pregnancy outcome (ever given
+birth OR currently pregnant), education level (primary or lower vs.
+secondary or higher), wealth index quintile, urbanicity, marital status,
+health insurance coverage, contraceptive use, and sexual history. All
+factor levels were explicitly defined to ensure consistent ordering in
+tables and models.
+
+```{r derive-variables}
+wm_clean <- wm_small %>%
+  mutate(
+    # Ever given birth
+    ever_given_birth = case_when(
+      cm1 == 1 ~ "Yes",
+      cm1 == 2 ~ "No",
+      TRUE ~ NA_character_
+    ),
+    
+    # Wealth index quintile
+    wealth_index = factor(case_when(
+      windex5 == 1 ~ "Poorest",
+      windex5 == 2 ~ "Second",
+      windex5 == 3 ~ "Middle",
+      windex5 == 4 ~ "Fourth",
+      windex5 == 5 ~ "Richest"
+    ), levels = c("Poorest", "Second", "Middle", "Fourth", "Richest")),
+    
+    # Current pregnancy
+    cur_pregnant = case_when(
+      cp1 == 1 ~ "Yes",
+      cp1 == 2 ~ "No",
+      TRUE ~ NA_character_
+    ),
+    
+    current_marital = case_when(
+      ma1 == 1 ~ "Yes - currently married",
+      ma1 == 2 ~ "Yes - living with partner",
+      ma1 == 3 ~ "No - not in union",
+      TRUE     ~ NA_character_
+    ),
+    
+    # Education level (3 categories)
+    Edu_level = case_when(
+      wb6a %in% c(0) ~ "Primary or lower",
+      wb6a %in% c(1) ~ "Primary or lower",
+      wb6a %in% c(2:5) ~ "Secondary or higher",
+      TRUE ~ NA_character_
+    ),
+    
+    # Urbanicity
+    urbanicity = case_when(
+      wb16 %in% c(1, 2) ~ "Urban",
+      wb16 == 3 ~ "Rural",
+      TRUE ~ NA_character_
+    ),
+    
+    # Health insurance
+    insurance = case_when(
+      wb18 == 1 ~ "Yes",
+      wb18 == 2 ~ "No",
+      TRUE ~ NA_character_
+    ),
+    
+    # Contraceptive use
+    contraceptive_use = case_when(
+      cp3 == 1 ~ "Yes",
+      cp3 == 2 ~ "No",
+      TRUE ~ NA_character_
+    ),
+    
+    # Ever had sex
+    had_sex = case_when(
+      sb1 >= 8 & sb1 <= 19 ~ "Yes",
+      sb1 == 0 ~ "No",
+      TRUE ~ NA_character_
+    ),
+    
+    # Teen pregnancy (derived outcome)
+    teen_pregnancy = case_when(
+      cur_pregnant == "Yes" | ever_given_birth == "Yes" ~ "Yes",
+      cur_pregnant == "No" & ever_given_birth == "No" ~ "No",
+      TRUE ~ NA_character_
+    )
+  )
+```
+
+## 5. Merge Women's Dataset with Cluster GIS Data
+
+We joined the cleaned women's dataset (`wm_clean`) to the GPS cluster
+shapefile on the cluster identifier (`HH1`), creating a
+spatially-referenced analytical dataset (`sf_joined`) that retains point
+geometry for each respondent's cluster. We verified that coordinate
+reference systems were aligned before merging and flagged urbanicity as
+a factor variable. The merged object was saved as an RDS file for use in
+downstream mapping and spatial regression steps.
+
+```{r merge-women-gis, message=FALSE, warning=FALSE}
+# ===============================================================
+# Load and Merge MICS Spatial and Survey Data
+# ===============================================================
+
+# --- 1. Define main data directory ---
+data_dir <- "C:/Users/b.banda/Box/Teenage pregnancy/Lit review Matrix Table/MICS_Analysis/MICS_Analysis"
+
+# --- 2. Read cluster GPS shapefile ---
+mics_clusters_sf <- st_read(file.path(data_dir, "MalawiMICS2019-20GPS.shp"), quiet = TRUE)
+
+# --- 3. Read boundary shapefile (district or T/A polygons) ---
+mics_boundaries_sf <- st_read(file.path(data_dir, "mics_boundaries/mics_boundaries_nr.shp"), quiet = TRUE)
+
+# --- 4. Check and align coordinate reference systems (CRS) ---
+if (st_crs(mics_clusters_sf) != st_crs(mics_boundaries_sf)) {
+  mics_clusters_sf <- st_transform(mics_clusters_sf, st_crs(mics_boundaries_sf))
+}
+
+# ===============================================================
+# 🔹 Merge Women’s Data (wm_clean) with Cluster Spatial Data
+# ===============================================================
+
+# ⚠️ Ensure HH1 matches the cluster ID variable in the shapefile
+# If your shapefile has a different ID column (e.g., CLUSTERID), adjust the join key
+sf_joined <- mics_clusters_sf %>%
+  right_join(wm_clean, by = c("HH1" = "hh1")) %>%
+  mutate(
+    # Create a unique ID for later weighting or identification
+    id = sprintf("WM_%04d", row_number()),
+    
+    # Ensure urbanicity is a proper factor (already derived earlier)
+    urbanicity = factor(urbanicity, levels = c("Urban", "Rural"))
+  )
+
+# ===============================================================
+# 🔹 Quick Data Check
+# ===============================================================
+sf_joined %>%
+  st_drop_geometry() %>%
+  count(HH6)
+
+# ===============================================================
+# 🔹 Save for later steps (mapping, Moran’s I, regression)
+# ===============================================================
+saveRDS(sf_joined, file.path(data_dir, "sf_joined_cleaned.RDS"))
+```
+
+## 6. Check Missingness
+
+We assessed missing data patterns across all key analysis variables
+using both unweighted counts and survey-weighted proportions. We
+visualized the missing data pattern using `mice::md.pattern()` and
+produced a summary table reporting the number and percentage of missing
+values before and after applying sampling weights. This step informed
+decisions about whether multiple imputation was warranted for any
+variable.
+
+```{r missingness-check, message=FALSE, warning=FALSE}
+# ==========================================================
+# 🔹 Missingness Analysis for Key Variables
+# ==========================================================
+
+# 1. Variables to assess
+vars_for_missing <- c(
+  "ever_given_birth", "cur_pregnant", "HH6", "insurance",
+  "contraceptive_use", "had_sex", "teen_pregnancy", "edu_level", "wmweight"
+)
+
+# 2. Subset and standardize
+dt_miss <- sf_joined %>%
+  select(any_of(vars_for_missing)) %>%
+  mutate(
+    across(where(is.character) | where(is.logical), as.factor),
+    wmweight = suppressWarnings(as.numeric(wmweight))
+  )
+
+# 3. Visualize missing data pattern (unweighted)
+ok_for_mice <- dt_miss %>%
+  select(-wmweight) %>%
+  mutate(across(where(is.factor), ~ as.numeric(.x)))
+
+mice::md.pattern(ok_for_mice, rotate.names = TRUE)
+
+# 4. Weighted missingness summary
+total_w <- sum(dt_miss$wmweight, na.rm = TRUE)
+if (total_w == 0) stop("Survey weights are missing or all zero.")
+
+miss_tbl <- tibble(variable = vars_for_missing) %>%
+  mutate(
+    n_missing     = map_int(variable, ~ sum(is.na(dt_miss[[.x]]))),
+    pct_missing   = round(100 * n_missing / nrow(dt_miss), 1),
+    w_missing     = map_dbl(variable, ~ sum(dt_miss$wmweight[is.na(dt_miss[[.x]])], na.rm = TRUE)),
+    w_pct_missing = round(100 * w_missing / total_w, 1)
+  ) %>%
+  arrange(desc(w_pct_missing))
+
+# 5. Display clean summary table
+miss_tbl %>%
+  gt() %>%
+  fmt_number(columns = c(pct_missing, w_pct_missing), decimals = 1) %>%
+  tab_header(title = "Weighted and Unweighted Missingness Summary") %>%
+  cols_label(
+    variable = "Variable",
+    n_missing = "N Missing (Unweighted)",
+    pct_missing = "% Missing (Unweighted)",
+    w_missing = "Weighted N Missing",
+    w_pct_missing = "% Missing (Weighted)"
+  )
+```
+
+## 7. Set Reference Categories and Master Variable Configuration
+
+To ensure consistency across all descriptive tables and regression
+models, we define a single master configuration specifying: (i) factor
+levels with explicit reference categories ordered first, (ii)
+standardised variable labels used across all output tables, and (iii)
+the canonical variable order followed in Tables 1–3. Setting reference
+categories at the data-preparation stage—rather than at the modelling
+stage—guarantees that descriptive tables and odds ratios use identical
+orderings, simplifies interpretation, and prevents discrepancies between
+the prevalence tables and the multivariable models. Reference categories
+were chosen *a priori* based on conceptual considerations (typically the
+most-protected or most-prevalent category) to align with prior
+literature on adolescent fertility in sub-Saharan Africa.
+
+```{r set-references-and-labels, message=FALSE, warning=FALSE}
+# ============================================================
+# Master Configuration: Variable Levels, Labels, and Order
+# ============================================================
+# This block is the single source of truth for variable handling
+# throughout the manuscript tables.
+# ------------------------------------------------------------
+
+# 1) Reference categories (placed first within each factor)
+# ------------------------------------------------------------
+# - Edu_level         : "Primary or lower" (modal, lowest education)
+# - wealth_index      : "Richest" (highest SES, conceptually protected)
+# - HH6               : "Urban" (lower-prevalence residence stratum)
+# - current_marital   : "No - not in union" (modal, baseline marital state)
+# - insurance         : "No" (most prevalent / unexposed baseline)
+# - contraceptive_use : "No" (unexposed baseline)
+# - had_sex           : "No" (unexposed baseline)
+# ------------------------------------------------------------
+
+sf_joined <- sf_joined %>%
+  mutate(
+    teen_pregnancy   = factor(teen_pregnancy, levels = c("No", "Yes")),
+    Edu_level        = factor(Edu_level,
+                              levels = c("Primary or lower", "Secondary or higher")),
+    wealth_index     = factor(wealth_index,
+                              levels = c("Richest", "Fourth", "Middle", "Second", "Poorest")),
+    HH6              = factor(HH6,
+                              levels = c("Urban", "Rural")),
+    current_marital  = factor(current_marital,
+                              levels = c("No - not in union",
+                                         "Yes - currently married",
+                                         "Yes - living with partner")),
+    insurance        = factor(insurance,        levels = c("No", "Yes")),
+    contraceptive_use = factor(contraceptive_use, levels = c("No", "Yes")),
+    had_sex          = factor(had_sex,          levels = c("No", "Yes"))
+  )
+
+# 2) Master label map (single source of truth across all tables)
+# ------------------------------------------------------------
+master_labels <- c(
+  Edu_level         = "Education",
+  wealth_index      = "Wealth Index",
+  HH6               = "Place of Residence",
+  current_marital   = "Marital status",
+  contraceptive_use = "Contraceptive use",
+  insurance         = "Health insurance",
+  had_sex           = "Ever had sex"
+)
+
+# 3) Canonical variable order across Tables 1, 2, 3
+# ------------------------------------------------------------
+master_order <- c(
+  "Edu_level",
+  "wealth_index",
+  "HH6",
+  "current_marital",
+  "contraceptive_use",
+  "insurance"
+)
+
+# 4) Master factor-level lookup (kept here for downstream label-aware loops)
+# ------------------------------------------------------------
+master_levels <- list(
+  Edu_level         = c("Primary or lower", "Secondary or higher"),
+  wealth_index      = c("Richest", "Fourth", "Middle", "Second", "Poorest"),
+  HH6               = c("Urban", "Rural"),
+  current_marital   = c("No - not in union", "Yes - currently married", "Yes - living with partner"),
+  contraceptive_use = c("No", "Yes"),
+  insurance         = c("No", "Yes"),
+  had_sex           = c("No", "Yes")
+)
+```
+
+## 8. Create Survey Design Object
+
+We specified the complex survey design using `svydesign()`, defining
+enumeration area clusters (`HH1`) as the primary sampling unit,
+district-by-urbanicity combinations as the stratification variable
+(`stratum`), and individual woman sampling weights (`wmweight`). Setting
+`nest = TRUE` accounts for cluster identifiers being nested within
+strata. This design object (`mics_svy`) underpins all survey-weighted
+prevalence estimates, chi-square tests, and logistic regression models
+in Parts III and IV. The design carries the factor-level orderings
+defined above, ensuring reference categories appear first in every
+downstream table.
+
+```{r survey-design}
+mics_svy <- svydesign(
+  id      = ~HH1,
+  strata  = ~stratum,
+  weights = ~wmweight,
+  data    = sf_joined,
+  nest    = TRUE
+)
+
+# Quick verification: confirm reference levels are first
+cat("Verification of reference categories (first level of each factor):\n")
+purrr::walk(master_order, function(v) {
+  lvls <- levels(mics_svy$variables[[v]])
+  cat(sprintf("  %-20s reference = %s\n", v, lvls[1]))
+})
+```
+
+## 9. Helper Functions for Survey-weighted Tables
+
+We defined a set of reusable helper functions to streamline
+survey-weighted estimation throughout the analysis. `svyciprop_fun()`
+computes a survey-weighted proportion with likelihood-based 95%
+confidence intervals for a single variable level. `svyciprop_by_fun()`
+extends this to stratified estimates. `style_pvalue2()` formats p-values
+to publication standard. `model_log()`, `model_lin()`, and
+`model_pois()` are wrappers around `svyglm()` for logistic, linear, and
+Poisson regression under the complex survey design.
+`add_significance_stars()` is used downstream to format `gtsummary`
+regression tables with conventional significance markers (*p\<0.05;
+**p\<0.01;*** p\<0.001).
+
+```{r help-functions}
+# Thousands-formatting helper used in all table footers and headers
+comma <- function(x) format(x, big.mark = ",", scientific = FALSE)
+
+# Significance-stars helper for gtsummary regression tables
+add_significance_stars <- function(tbl,
+                                   pattern = "{estimate} [{conf.low}-{conf.high}]{stars}",
+                                   hide_p  = TRUE,
+                                   hide_se = TRUE) {
+  tbl <- tbl %>%
+    modify_table_body(
+      ~ .x %>%
+        mutate(
+          stars = case_when(
+            !is.na(p.value) & p.value < 0.001 ~ "***",
+            !is.na(p.value) & p.value < 0.01  ~ "**",
+            !is.na(p.value) & p.value < 0.05  ~ "*",
+            TRUE                              ~ ""
+          )
+        )
+    ) %>%
+    modify_column_merge(pattern = pattern, rows = !is.na(estimate))
+
+  if (hide_p  && "p.value"   %in% names(tbl$table_body)) tbl <- tbl %>% modify_column_hide(columns = p.value)
+  if (hide_se && "std.error" %in% names(tbl$table_body)) tbl <- tbl %>% modify_column_hide(columns = std.error)
+
+  tbl
+}
+
+svyciprop_fun <- function(design, var, var_lvl) {
+  # Build formula for indicator: e.g., I(gender == "Man")
+  form <- paste0("I(", var, " == ", deparse(var_lvl), ")")
+  
+  # Compute the weighted proportion using svyciprop() with likelihood method
+  svy_props <- svyciprop(
+    as.formula(paste0("~", form)),
+    design,
+    method = "likelihood"
+  )
+  
+  # Extract the proportion and confidence intervals, then scale to percentages
+  prop <- svy_props[1]
+  cil <- attr(svy_props, "ci")[1]
+  ciu <- attr(svy_props, "ci")[2]
+  
+  df_out <- data.frame(
+    var = var,
+    lvl = var_lvl,
+    est = prop,
+    ci_l = cil,
+    ci_u = ciu
+  ) %>%
+    mutate(
+      est = est * 100,
+      ci_l = ci_l * 100,
+      ci_u = ci_u * 100
+    )
+  
+  return(df_out)
+}
+
+svyciprop_by_fun <- function(.data, var, var_lvl, by) {
+  form <- paste0("I(", var, " == ", deparse(var_lvl), ")")
+  
+  svy_props <- svyby(
+    as.formula(paste0("~", form)),
+    by = as.formula(paste0("~", by)),
+    design = .data,
+    svyciprop,
+    vartype = "ci",
+    method = "likelihood"
+  ) %>%
+    rename("est" = form) %>%
+    mutate(
+      var = var,
+      lvl = var_lvl,
+      lvl = factor(lvl, levels = var_lvl),
+      est = est * 100,
+      ci_l = ci_l * 100,
+      ci_u = ci_u * 100
+    )
+  
+  return(svy_props)
+}
+
+miss_svy <- function(.data, var, dkrf = TRUE) {
+  na_len <- sum(is.na(.data[, var]))
+  var_formal_lc <- var
+  
+  if (dkrf == TRUE) {
+    .var <- sym(var)
+    .data_sub <- filter(.data, !!.var %in% c("Don't know/Refused", "Not applicable"))
+    dkrf_len <- sum(!is.na(.data_sub[, .var]))
+    na_len <- na_len + dkrf_len
+  }
+  
+  statement <- paste0("Participants missing ", var_formal_lc, " were removed (N = ", na_len, ").")
+  return(statement)
+}
+
+style_pvalue2 <- function(x, digits = 2, prepend_p = FALSE,
+                          big.mark = NULL, decimal.mark = ".", ...) {
+
+  # Pre-allocate result vector
+  p_fmt <- character(length(x))
+
+  # Loop through each value in x
+  for (i in seq_along(x)) {
+    xi <- x[i]
+
+    if (is.na(xi)) {
+      p_fmt[i] <- NA_character_
+    } else if (digits == 1) {
+      p_fmt[i] <- dplyr::case_when(
+        xi > 0.9 ~ paste0(">", format(0.9, digits = 1, nsmall = 1)),
+        round(xi, 1) >= 0.2 ~ format(xi, digits = 1, nsmall = 1),
+        round(xi, 2) >= 0.1 ~ format(xi, digits = 2, nsmall = 2),
+        xi >= 0.001 ~ format(xi, digits = 3, nsmall = 3),
+        xi < 0.001 ~ "<0.001"
+      )
+    } else if (digits == 2) {
+      p_fmt[i] <- dplyr::case_when(
+        xi > 0.99 ~ ">0.99",
+        round(xi, 2) >= 0.1 ~ format(xi, digits = 2, nsmall = 2),
+        xi >= 0.01 ~ format(xi, digits = 2, nsmall = 2),
+        xi >= 0.001 ~ "<0.01",
+        xi < 0.001 ~ "<0.001"
+      )
+    } else if (digits == 3) {
+      p_fmt[i] <- dplyr::case_when(
+        xi > 0.999 ~ ">0.999",
+        xi >= 0.001 ~ format(xi, digits = 3, nsmall = 3),
+        xi < 0.001 ~ "<0.001"
+      )
+    } else if (digits == 4) {
+      p_fmt[i] <- dplyr::case_when(
+        xi > 0.9999 ~ ">0.9999",
+        xi >= 0.0001 ~ format(xi, digits = 4, nsmall = 4),
+        xi < 0.0001 ~ "<0.0001"
+      )
+    } else {
+      stop("The `digits=` argument must be 1, 2, 3, or 4.")
+    }
+
+    if (prepend_p && !is.na(p_fmt[i])) {
+      if (startsWith(p_fmt[i], "<") || startsWith(p_fmt[i], ">")) {
+        p_fmt[i] <- paste0("p", p_fmt[i])
+      } else {
+        p_fmt[i] <- paste0("p=", p_fmt[i])
+      }
+    }
+  }
+
+  return(p_fmt)
+}
+
+# Survey-weighted unadjusted logistic regression.
+# Ensures correct standard errors under complex survey design.
+model1 <- function(.data, outcome, ...) {
+  .form <- as.formula(paste0(outcome, " ~ ", paste(..., collapse = "+")))
+  svyglm(.form, design = .data, family = "quasibinomial")
+}
+
+# Survey-weighted linear regression for continuous outcomes.
+# Accounts for weights, strata, and clustering in estimating means.
+model_lin <- function(.data, outcome, ...) {
+  .form <- as.formula(paste0(outcome, " ~ ", paste(..., collapse = "+")))
+  svyglm(.form, design = .data, family = "gaussian")
+}
+
+# Survey-weighted logistic regression with multiple predictors.
+# Returns robust estimates using the quasibinomial family.
+model_log <- function(.data, outcome, ...) {
+  .form <- as.formula(paste0(outcome, " ~ ", paste(..., collapse = "+")))
+  svyglm(.form, design = .data, family = "quasibinomial")
+}
+
+# Poisson regression with survey weights for count data outcomes.
+# Recommended for modeling counts like symptom scores or events.
+model_pois <- function(.data, outcome, ...) {
+  .form <- as.formula(paste0(outcome, " ~ ", paste(..., collapse = "+")))
+  svyglm(.form, design = .data, family = "quasipoisson")
+}
+```
+
+# PART III: Risk Factor Analysis - Final Tables
+
+The three tables below are the publication-ready tables for the paper.
+All estimates are survey-weighted to account for the complex MICS
+sampling design. Sample sizes (n) are weighted and rounded to the
+nearest whole number, representing the population these respondents
+represent. All percentages, odds ratios, and confidence intervals are
+derived from survey-weighted analyses.
+
+## Final Table 1: Sample Demographics
+
+We constructed a sample-characteristics table presenting weighted sample
+sizes (rounded to the nearest whole number) and survey-weighted column
+percentages with 95% confidence intervals for all sociodemographic and
+behavioural exposures, stratified by teenage pregnancy status (Yes/No)
+alongside the overall analytic sample. Categories within each variable
+are ordered with the reference category (used in the regression in Table
+3) appearing first; this ensures direct visual alignment between Tables
+1 and 3. Sample sizes vary slightly across variables due to item-level
+non-response; missingness for each variable is reported in Section 6
+(Missingness Analysis).
+
+```{r table1-complete, message=FALSE, warning=FALSE}
+# ============================================================
+# Table 1: Sample Demographics by Teen Pregnancy Status
+# ============================================================
+# Uses master_order, master_labels, master_levels defined in Section 7.
+# `comma()` and `add_significance_stars()` are defined in Section 9.
+# Complete  Table 1 stratified by teen pregnancy
+
+
+comma <- function(x) format(x, big.mark = ",", scientific = FALSE)
+
+# # --- Variable levels and labels (excluding teen_pregnancy) ------------------
+tls <- list(
+
+  Edu_level         = c("Primary or lower","Secondary or higher"),
+  HH6               = c("Rural", "Urban"),
+  insurance         = c("No", "Yes"),
+  contraceptive_use = c("No", "Yes"),
+  wealth_index      = c("Poorest", "Second", "Middle", "Fourth", "Richest"),
+  current_marital   = c("Yes - currently married", "Yes - living with partner", "No - not in union"))
+
+# Define variable label mapping
+var_labels <- c(
+  Edu_level          = "Education Level",
+  HH6                = "Urbanicity",
+  wealth_index       = "Wealth Index",
+  current_marital    = "Current Marital Status",
+   contraceptive_use  = "Contraceptive Use",
+   insurance          = "Health Insurance Coverage",
+  ever_given_birth   = "Ever Given Birth")
+
+# Define total_n used in cols_label()
+total_n <- nrow(mics_svy$variables)
+
+# --- Overall (Total) column with unweighted counts --------------------------
+overall_tbl <- map_dfr(
+  names(var_labels),
+  function(v) {
+    lvls <- tls[[v]]
+    if (length(lvls) == 0) {
+      message("Warning: No valid levels for ", v)
+      return(tibble(var = v, lvl = character(), est_tot = character(), n_tot = integer()))
+    }
+    prop <- map_dfr(lvls, ~ {
+      res <- tryCatch(
+        svyciprop_fun(mics_svy, v, .x),
+        error = function(e) {
+          message("Warning: svyciprop_fun failed for ", v, "=", .x, ": ", e$message)
+          return(tibble(est = NA, ci_l = NA, ci_u = NA))
+        }
+      )
+      res %>% mutate(lvl = .x)
+    })
+    count <- map_dfr(lvls, ~ {
+      dat <- mics_svy$variables
+      n <- sum(dat[[v]] == .x, na.rm = TRUE)
+      tibble(lvl = .x, n_tot = n)
+    })
+    prop %>%
+      left_join(count, by = "lvl") %>%
+      mutate(var = v, lvl = factor(lvl, levels = lvls)) %>%
+      arrange(lvl) %>%
+      mutate(
+        est_tot = case_when(
+          is.na(est) | is.na(ci_l) | is.na(ci_u) ~ sprintf("NA (%s) [NA, NA]", comma(n_tot)),
+          TRUE ~ sprintf("%0.1f%% (%s) [%0.1f%%, %0.1f%%]", est, comma(n_tot),  ci_l, ci_u)
+        )
+      ) %>%
+      select(var, lvl, est_tot, n_tot)
+  }
+)
+
+# --- Stratified by teen_pregnancy (No/Yes) with unweighted counts -----------
+by_tbl <- map_dfr(
+  names(var_labels),
+  function(v) {
+    lvls <- tls[[v]]
+    if (length(lvls) == 0) {
+      message("Warning: No valid levels for ", v)
+      return(tibble(var = v, lvl = character(), No = character(), Yes = character(), n_no = integer(), n_yes = integer()))
+    }
+    prop <- map_dfr(lvls, ~ {
+      lv <- .x
+      fstr <- paste0("I(", v, " == \"", lv, "\")")
+      out <- tryCatch(
+        {
+          res <- svyby(
+            as.formula(paste0("~", fstr)),
+            ~teen_pregnancy,
+            mics_svy, 
+            svyciprop, 
+            method = "logit",
+            vartype = "ci", 
+            na.rm = TRUE, 
+            keep.names = TRUE
+          )
+          names(res)[names(res) == fstr] <- "est"
+          names(res)[names(res) == paste0(fstr, ".lower")] <- "ci_l"
+          names(res)[names(res) == paste0(fstr, ".upper")] <- "ci_u"
+          res
+        },
+        error = function(e) {
+          message("Warning: svyby failed for ", v, "=", lv, " by teen_pregnancy: ", e$message)
+          return(data.frame(teen_pregnancy = c("No", "Yes"), 
+                            est = NA, ci_l = NA, ci_u = NA))
+        }
+      )
+      out %>%
+        mutate(lvl = lv) %>%
+        select(teen_pregnancy, lvl, est, ci_l, ci_u)
+    })
+    count <- map_dfr(lvls, ~ {
+      dat <- mics_svy$variables
+      n <- tapply(dat[[v]] == .x, dat[["teen_pregnancy"]], sum, na.rm = TRUE)
+      data.frame(
+        teen_pregnancy = names(n),
+        lvl = .x,
+        n = as.numeric(n)
+      ) %>%
+        filter(!is.na(teen_pregnancy))
+    })
+    prop %>%
+      left_join(count, by = c("teen_pregnancy", "lvl")) %>%
+      mutate(
+        var = v,
+        est_ci = case_when(
+          is.na(est) | is.na(ci_l) | is.na(ci_u) ~ sprintf("NA (%s) [NA, NA]", comma(n)),
+          TRUE ~ sprintf("%0.1f%% (%s) [%0.1f%%, %0.1f%%]", 100 * est, comma(n), 100 * ci_l, 100 * ci_u)
+        )
+      ) %>%
+      select(var, lvl, teen_pregnancy, est_ci, n) %>%
+      pivot_wider(names_from = teen_pregnancy, values_from = c(est_ci, n), values_fill = list(est_ci = "", n = 0)) %>%
+      mutate(lvl = factor(lvl, levels = lvls)) %>%
+      arrange(lvl) %>%
+      rename(n_no = n_No, n_yes = n_Yes)
+  }
+)
+
+# --- Combine & render table -------------------------------------------------
+final_tbl <- overall_tbl %>%
+  left_join(by_tbl, by = c("var", "lvl")) %>%
+  mutate(var_label = var_labels[var],
+         lvl = as.character(lvl)) %>%
+  select(var_label, lvl, n_yes, Yes = est_ci_Yes,n_no, No = est_ci_No,n_tot, est_tot)
+
+gt_tbl1_strat <- final_tbl %>%
+  gt(groupname_col = "var_label") %>%
+  tab_header(
+    title = "Table 1: Sample demographics",
+    subtitle = "Unweighted total N and survey-weighted percentages (95% CI), stratified by Teen Pregnancy"
+  ) %>%
+  cols_label(
+    lvl = "Level",
+    n_tot = "n",
+    est_tot = html(paste0("Total (Unweighted n = ", comma(total_n), ")")),
+    n_no = "n = 4,175",
+    No = "Teen Pregnancy: No",
+    n_yes = "n = 1,595",
+    Yes = "Teen Pregnancy: Yes"
+  ) %>%
+  tab_footnote(
+    footnote = "Estimates and confidence intervals are survey-weighted; 95% CIs use Rao–Scott adjustments where applicable.",
+    locations = cells_title(groups = "title")
+  ) %>%
+  tab_options(
+    table.font.size = px(13),
+    heading.align = "left",
+    column_labels.font.weight = "bold"
+  )
+
+# Display the table
+gt_tbl1_strat
+```
+
+## Supplementary Table S1: Survey-Weighted Chi-Square Tests
+
+We tested the bivariate association between teenage pregnancy and each
+covariate using chi-square tests on survey-weighted contingency tables
+(`svytable()` + `chisq.test()`). This approach correctly propagates
+sampling weights into the cell counts without the matrix decomposition
+issues that can arise with Rao-Scott corrections on sparse multi-level
+variables. P-values below 0.05 are bolded to highlight statistically
+significant associations. Variables and labels follow the master
+configuration in Section 7.
+
+```{r table-s1-chisq, message=FALSE, warning=FALSE}
+# ============================================================
+# Supplementary Table S1: Survey-Weighted Chi-Square Tests
+# ============================================================
+
+chi_results <- map_dfr(master_order, function(v) {
+  sub_design <- subset(mics_svy, !is.na(teen_pregnancy) & !is.na(get(v)))
+
+  tab  <- svytable(as.formula(paste0("~teen_pregnancy + ", v)), design = sub_design)
+  test <- chisq.test(tab)
+
+  tibble(
+    Variable = master_labels[v],
+    Chi_sq   = as.numeric(test$statistic),
+    df       = as.numeric(test$parameter),
+    p_value  = test$p.value
+  )
+})
+
+chi_results %>%
+  gt() %>%
+  tab_header(
+    title    = md("**Supplementary Table S1.** Survey-weighted χ² tests of teenage pregnancy vs sociodemographic and behavioural covariates"),
+    subtitle = md("Malawi MICS 2019–20")
+  ) %>%
+  fmt_number(columns = Chi_sq,  decimals = 2) %>%
+  fmt_number(columns = df,      decimals = 0) %>%
+  fmt(columns = p_value, fns = function(x) style_pvalue2(x, digits = 3)) %>%
+  cols_label(
+    Variable = "Covariate",
+    Chi_sq   = md("χ² statistic"),
+    df       = "df",
+    p_value  = "p-value"
+  ) %>%
+  tab_style(
+    style     = cell_text(weight = "bold"),
+    locations = cells_body(columns = p_value, rows = p_value < 0.05)
+  ) %>%
+  tab_footnote(
+    footnote  = paste(
+      "Tests use Pearson χ² applied to survey-weighted contingency tables (svytable), which propagates sampling weights into cell counts under the complex MICS design.",
+      "Bold p-values indicate significance at α = 0.05.",
+      "Each test is restricted to respondents with non-missing values on both teenage pregnancy and the covariate."
+    ),
+    locations = cells_title(groups = "title")
+  ) %>%
+  tab_options(
+    table.font.size           = px(13),
+    heading.align             = "left",
+    column_labels.font.weight = "bold"
+  )
+```
+
+## Final Table 2: Weighted Prevalence of Teenage Pregnancy
+
+We estimated the survey-weighted prevalence of teenage pregnancy (%, 95%
+CI) within each level of every exposure variable using `svyby()` with
+`svyciprop` (logit-transformed CIs). Each row reports the weighted count
+of pregnant teens, the total weighted sample within that stratum, and
+the within-stratum prevalence with its 95% CI. Variables are presented
+in the same canonical order as Tables 1 and 3, and reference categories
+appear first to facilitate cross-table comparison.
+
+```{r table2-prevalence, message=FALSE, warning=FALSE}
+# --- Variables for prevalence table
+target_vars <- c(
+  "Edu_level", "HH6","wealth_index",  "current_marital", "insurance", 
+ "contraceptive_use","had_sex"
+
+)
+
+var_labels <- c(
+  ever_given_birth   = "Ever Given Birth",
+  GEONAMES           = "District",
+  cur_pregnant       = "Currently Pregnant",
+  Edu_level          = "Education Level",
+  HH6                = "Place of residence",
+  insurance          = "Health Insurance Coverage",
+  contraceptive_use  = "Contraceptive Use",
+  wealth_index       = "Wealth Index",
+  current_marital    = "Current Marital Status",
+  had_sex            =  "Ever had sex"
+)
+
+# --- 1) Weighted prevalence of teen pregnancy (teen_pregnancy == "Yes")
+prev_tbl <- map_dfr(target_vars, function(v) {
+  dat <- mics_svy$variables
+  lvls <- unique(na.omit(as.character(dat[[v]])))
+  if (length(lvls) == 0) return(NULL)
+  
+  svy_res <- svyby(
+    ~I(teen_pregnancy == "Yes"),
+    as.formula(paste0("~", v)),
+    mics_svy,
+    svyciprop,
+    vartype = "ci",
+    method = "logit",
+    na.rm = TRUE
+  )
+  
+  est_col <- setdiff(names(svy_res), c(v, "ci_l", "ci_u", "se", "SE"))
+  if (length(est_col) == 0) stop("No estimate column found.")
+  
+  svy_res %>%
+    rename(est = all_of(est_col[1])) %>%
+    mutate(
+      var = v,
+      lvl = as.character(!!sym(v)),
+      est_ci = sprintf("%0.1f%% [%0.1f%%, %0.1f%%]",
+                       100 * est, 100 * ci_l, 100 * ci_u)
+    ) %>%
+    select(var, lvl, est, ci_l, ci_u, est_ci)
+}) %>%
+  mutate(lvl = as.character(lvl))
+
+# --- 2) Unweighted total counts for each level
+unweighted_counts <- map_dfr(target_vars, function(v) {
+  mics_svy$variables %>%
+    filter(!is.na(.data[[v]])) %>%
+    mutate(lvl = as.character(.data[[v]])) %>%
+    count(lvl, name = "n_unweighted") %>%
+    mutate(var = v)
+})
+
+# --- 3) NEW: Unweighted counts of teen pregnancy = "Yes"
+teen_preg_counts <- map_dfr(target_vars, function(v) {
+  mics_svy$variables %>%
+    filter(!is.na(.data[[v]])) %>%
+    mutate(lvl = as.character(.data[[v]])) %>%
+    group_by(lvl) %>%
+    summarise(
+      n_teen_preg = sum(teen_pregnancy == "Yes", na.rm = TRUE),
+      .groups = "drop"
+    ) %>%
+    mutate(var = v)
+})
+
+# --- 4) Merge counts + labels
+prev_tbl_final <- prev_tbl %>%
+  left_join(unweighted_counts, by = c("var", "lvl")) %>%
+  left_join(teen_preg_counts, by = c("var", "lvl")) %>%
+  mutate(var_label = var_labels[var]) %>%
+  select(var_label, lvl, n_unweighted, n_teen_preg, est_ci)
+
+# --- 5) Render as GT table
+gt_prev_teen_pregnancy <- prev_tbl_final %>%
+  gt(groupname_col = "var_label") %>%
+  tab_header(
+    title = "Table 2. Prevalence of Teenage Pregnancy by Sociodemographic Characteristics",
+    subtitle = "Unweighted total N, unadjusted teen pregnancy counts, and survey-weighted % (95% CI)"
+  ) %>%
+  cols_label(
+    lvl = "Level",
+    n_unweighted = html(paste0("Total Participants (n = ", comma(nrow(mics_svy$variables)), ")")),
+    n_teen_preg = "Teenage pregnancies (n= 1595)",
+    est_ci = "Weighted % [95% CI]"
+  ) %>%
+  tab_footnote(
+    footnote = paste(   "Source: Malawi Multiple Indicator Cluster Survey (MICS) 2019–20, women's questionnaire.",
+      "Teen pregnancy defined as ever having given birth (CM1 = 1) or being currently pregnant (CP1 = 1).",
+      " Estimates and confidence intervals are survey-weighted; 95% CIs use Rao–Scott adjustments, accounting for the two-stage stratified cluster design."
+    )
+,
+    locations = cells_title(groups = "title")
+  ) %>%
+  tab_options(
+    table.font.size = px(13),
+    heading.align = "left",
+    column_labels.font.weight = "bold"
+  )
+
+gt_prev_teen_pregnancy
+```
+
+## Final Table 3: Survey-weighted Logistic Regression
+
+We estimated associations between each exposure and teenage pregnancy
+using survey-weighted logistic regression (`svyglm`, quasibinomial
+family) under two specifications: Model 1 reports unadjusted odds ratios
+from separate univariable models for each covariate; Model 2 reports
+adjusted odds ratios from a single multivariable model including all
+covariates. Reference categories follow the master configuration in
+Section 7. The multivariable model uses complete cases on all included
+covariates; the analytic sample size is reported in the table footer.
+
+```{r table3-regression, message=FALSE, warning=FALSE}
+# ============================================================
+# Table 3: Logistic Regression of Teenage Pregnancy
+# Among Adolescent Females (15–19 Years), Malawi MICS 2019–20
+# ============================================================
+# Reference categories and variable order are inherited from
+# the master configuration in Section 7. Only the binary
+# numeric outcome is created here.
+# ------------------------------------------------------------
+
+# Update design to add binary numeric outcome
+mics_svy <- update(mics_svy, teen_pregnancy_num = as.numeric(teen_pregnancy == "Yes"))
+
+# Helper: gtsummary label list (formula form) for adjusted model
+full_label_list <- map2(master_order, master_labels[master_order],
+                        ~ as.formula(paste0(.x, " ~ '", .y, "'")))
+
+# Helper: single-variable label for univariable models
+make_single_label <- function(var) {
+  stats::setNames(list(master_labels[[var]]), var)
+}
+
+# ------------------------------------------------------------
+# Step 1: Univariable (Model 1) survey-weighted logistic models
+# ------------------------------------------------------------
+unadj_models <- map(master_order, function(v) {
+  svyglm(
+    as.formula(paste0("teen_pregnancy_num ~ ", v)),
+    design = mics_svy,
+    family = quasibinomial()
+  )
+}) %>% set_names(master_order)
+
+# ------------------------------------------------------------
+# Step 2: Multivariable (Model 2) adjusted survey-weighted model
+# Restricted internally by svyglm to complete cases on all
+# covariates plus the outcome.
+# ------------------------------------------------------------
+adj_formula <- as.formula(
+  paste0("teen_pregnancy_num ~ ", paste(master_order, collapse = " + "))
+)
+adj_model_full <- svyglm(adj_formula, design = mics_svy, family = quasibinomial())
+
+# Analytic sample size of the adjusted model (complete cases)
+adj_n_unweighted <- length(adj_model_full$residuals)
+adj_n_weighted   <- ceiling(sum(mics_svy$variables$wmweight[
+  rowSums(is.na(mics_svy$variables[, c("teen_pregnancy_num", master_order)])) == 0
+], na.rm = TRUE))
+
+# ------------------------------------------------------------
+# Step 3: Format Model 1 (unadjusted ORs)
+# ------------------------------------------------------------
+unadj_tp_log <- map(
+  master_order,
+  function(j) {
+    unadj_models[[j]] %>%
+      tbl_regression(
+        exponentiate = TRUE,
+        intercept    = FALSE,
+        pvalue_fun   = ~ style_pvalue2(.x, digits = 2),
+        label        = make_single_label(j)
+      ) %>%
+      add_significance_stars(
+        pattern = "{estimate} [{conf.low}-{conf.high}]{stars}",
+        hide_p  = TRUE,
+        hide_se = TRUE
+      )
+  }
+) %>%
+  tbl_stack()
+
+# ------------------------------------------------------------
+# Step 4: Format Model 2 (adjusted aORs)
+# ------------------------------------------------------------
+adj_tp_log_full <- adj_model_full %>%
+  tbl_regression(
+    exponentiate = TRUE,
+    intercept    = FALSE,
+    pvalue_fun   = ~ style_pvalue2(.x, digits = 2),
+    label        = full_label_list
+  ) %>%
+  add_significance_stars(
+    pattern = "{estimate} [{conf.low}-{conf.high}]{stars}",
+    hide_p  = TRUE,
+    hide_se = TRUE
+  )
+
+# ------------------------------------------------------------
+# Step 5: Merge models into one publication table
+# ------------------------------------------------------------
+teen_preg_log <- tbl_merge(
+  tbls = list(unadj_tp_log, adj_tp_log_full),
+  tab_spanner = c(
+    "**Model 1: Unadjusted OR [95% CI]**",
+    "**Model 2: Adjusted aOR [95% CI]**"
+  )
+) %>%
+  modify_header(
+    label      ~ "**Characteristic**",
+    estimate_1 ~ "**Model 1: Unadjusted OR [95% CI]**",
+    estimate_2 ~ "**Model 2: Adjusted aOR [95% CI]**"
+  ) %>%
+  modify_caption(
+    "**Table 3.** Survey-weighted logistic regression of teenage pregnancy among adolescent females (15–19 years), Malawi MICS 2019–20"
+  ) %>%
+  bold_labels() %>%
+  modify_spanning_header(
+    everything() ~ "**Teenage Pregnancy**"
+  ) %>%
+  modify_footnote(
+    everything() ~ paste0(
+      "Significance: *p<0.05; **p<0.01; ***p<0.001. ",
+      "Estimates derived from survey-weighted logistic regression (quasi-binomial) accounting for the two-stage stratified cluster design ",
+      "(PSU = HH1, strata = district × urbanicity, weight = wmweight). ",
+      "Model 1 presents unadjusted odds ratios from separate univariable models for each covariate. ",
+      "Model 2 presents adjusted odds ratios from a single multivariable model including all listed covariates ",
+      "(complete-case analytic sample, unweighted n = ", comma(adj_n_unweighted),
+      "; weighted n = ", comma(adj_n_weighted), "). ",
+            "Teen pregnancy defined as ever given birth (CM1 = 1) or currently pregnant (CP1 = 1). ",
+      "OR = odds ratio; aOR = adjusted odds ratio; CI = confidence interval."
+    )
+  )
+
+teen_preg_log
+```
+
+# PART IV: Spatial Analysis - Hotspots of Teenage Pregnancy
+
+We prepared the spatial analysis dataset by creating a respondent-level
+analytical object (`teens`) from `wm_clean`, filtered to women with
+non-missing pregnancy status. We linked each respondent to her
+Traditional Authority name (`ta_name`) by joining on the cluster
+identifier (`HH1`) to the GPS cluster shapefile, which contains the
+`GEONAMET` field assigned during data collection.
+
+```{r spatial-prep-libs, message=FALSE, warning=FALSE}
+# Load districts shapefile for overlay on LISA map
+districts <- st_read("mics_boundaries3.shp", quiet = TRUE)
+
+# Join with sf_data on HH1 to attach ta_name (GEONAMET) from the GPS cluster file
+teens <- wm_clean %>%
+  rename_with(tolower) %>%
+  filter(!is.na(teen_pregnancy)) %>%
+  mutate(pregnant = if_else(teen_pregnancy == "Yes", 1L, 0L)) %>%
+  left_join(
+    sf_data %>% st_drop_geometry() %>% select(HH1, ta_name = GEONAMET),
+    by = c("hh1" = "HH1")
+  )
+```
+
+## 0. Link clusters to Traditional Authorities
+
+We loaded the TA boundary shapefile and linked each survey cluster in
+`sf_joined` to its Traditional Authority using a table join on `HH1`
+rather than a spatial join, since the GPS cluster file already contains
+the `GEONAMET` TA assignment. We constructed a separate survey design
+object (`mics_svy_ta`) that includes `ta_name`, preserving the original
+`mics_svy` object for the risk factor tables in Part III.
+
+```{r link-clusters-to-ta, message=FALSE, warning=FALSE}
+cat("Loading TA boundaries and linking clusters to TAs...\n")
+
+ta_boundaries <- st_read("mics_boundaries_nr.shp", quiet = TRUE) %>%
+  select(ta_name = GEONAMET, geometry) %>%
+  mutate(ta_name = trimws(ta_name)) %>%
+  filter(ta_name != "") %>%
+  st_make_valid()
+
+cat("TA boundaries loaded:", nrow(ta_boundaries), "records\n")
+
+# Table join: link each cluster to its TA using HH1 -> GEONAMET from GPS file
+sf_joined_with_ta <- sf_joined %>%
+  left_join(
+    sf_data %>% st_drop_geometry() %>% select(HH1, ta_name = GEONAMET),
+    by = "HH1"
+  ) %>%
+  mutate(ta_name = replace_na(ta_name, "Unknown"))
+
+cat("Clusters linked to TAs\n")
+cat("  N clusters in Unknown TA:", sum(sf_joined_with_ta$ta_name == "Unknown"), "\n")
+
+# Separate survey design for spatial analysis (preserves original mics_svy for Tables 1-3)
+mics_svy_ta <- svydesign(
+  id      = ~HH1,
+  strata  = ~stratum,
+  weights = ~wmweight,
+  data    = sf_joined_with_ta,
+  nest    = TRUE
+)
+
+cat("Survey design mics_svy_ta built with ta_name variable\n")
+```
+
+## 1. Calculate TA-Level Survey-Weighted Prevalence
+
+We used `svyby()` with `svymean` to estimate the survey-weighted
+prevalence of teenage pregnancy within each Traditional Authority, using
+`mics_svy_ta` which carries the `ta_name` grouping variable. We
+extracted point estimates and 95% confidence intervals and converted all
+proportions to percentages for reporting.
+
+```{r ta-prevalence, message=FALSE, warning=FALSE}
+cat("\nCalculating survey-weighted prevalence by TA...\n")
+
+ta_prev_svy <- svyby(
+  ~teen_pregnancy,
+  ~ta_name,
+  mics_svy_ta,
+  svymean,
+  vartype = "ci",
+  na.rm = TRUE
+)
+
+names(ta_prev_svy)
+
+ta_prev <- ta_prev_svy %>%
+  as_tibble() %>%
+  rename(
+    prev = teen_pregnancyYes,
+    ci_low = ci_l.teen_pregnancyYes,
+    ci_high = ci_u.teen_pregnancyYes
+  ) %>%
+  mutate(
+    prev_pct = prev * 100,
+    ci_low_pct = ci_low * 100,
+    ci_high_pct = ci_high * 100
+  )
+```
+
+## 2. Add TA-Level Sample Sizes
+
+We computed unweighted sample sizes per Traditional Authority from the
+`teens` object, counting the total number of adolescent respondents and
+the number with a positive pregnancy outcome. These counts were merged
+with the weighted prevalence estimates to allow assessment of estimate
+precision and to flag TAs with small samples (fewer than 10 or 20
+respondents).
+
+```{r ta-sample-sizes, message=FALSE, warning=FALSE}
+ta_n <- teens %>%
+  group_by(ta_name) %>%
+  summarise(
+    n_teen = n(),
+    n_pregnant = sum(pregnant, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+ta_data <- ta_prev %>%
+  left_join(ta_n, by = "ta_name") %>%
+  arrange(desc(prev_pct)) %>%
+  mutate(
+    flag_small = n_teen < 20,
+    flag_very_small = n_teen < 10
+  )
+
+cat("\nTA-LEVEL PREVALENCE: Top 10 by prevalence\n")
+print(ta_data %>% head(10))
+```
+
+## 3. Sample Size Quality Check
+
+We printed a summary of TA-level sample adequacy to identify units with
+very small samples that may produce unstable prevalence estimates. All
+TAs with at least one respondent were retained in the spatial analysis
+to avoid selection bias, but small-sample TAs are flagged in the output
+table.
+
+```{r sample-quality-check, message=FALSE, warning=FALSE}
+cat("\n", strrep("=", 80), "\n", sep = "")
+cat("SAMPLE SIZE QUALITY CHECK\n")
+cat(strrep("=", 80), "\n", sep = "")
+cat("TAs with <10 teens, very small:", sum(ta_data$flag_very_small), "\n")
+cat("TAs with <20 teens, small:", sum(ta_data$flag_small), "\n")
+cat("Mean n per TA:", round(mean(ta_data$n_teen), 1), "\n")
+cat("Median n per TA:", median(ta_data$n_teen), "\n")
+```
+
+## 4. Clean and Aggregate Boundary Polygons
+
+We excluded TA Nkula due to topology errors and dissolved multi-part
+polygons for TAs that appear as more than one feature in the boundary
+shapefile using `st_combine()`. This ensures a one-to-one match between
+the prevalence data and boundary features when merging for spatial
+analysis.
+
+```{r clean-boundaries, message=FALSE, warning=FALSE}
+ta_boundaries_clean <- ta_boundaries %>%
+  filter(ta_name != "TA Nkula")
+
+ta_boundaries_unique <- ta_boundaries_clean %>%
+  group_by(ta_name) %>%
+  summarise(geometry = st_combine(geometry), .groups = "drop") %>%
+  st_make_valid()
+```
+
+## 5. Merge Prevalence Data with Boundary Polygons
+
+We joined the TA-level weighted prevalence estimates to the cleaned
+boundary polygons to create the primary spatial analysis object
+(`ta_lisa`). We then computed a Z-score standardization of prevalence
+(`prev_z`) required for the Moran scatter plot and LISA quadrant
+classification. TAs without prevalence data were excluded at this step.
+
+```{r merge-prev-boundaries, message=FALSE, warning=FALSE}
+ta_lisa <- ta_boundaries_unique %>%
+  left_join(ta_data, by = "ta_name") %>%
+  filter(!is.na(prev)) %>%
+  mutate(
+    prev_z = (prev - mean(prev, na.rm = TRUE)) / sd(prev, na.rm = TRUE),
+    prev_z = replace_na(prev_z, 0)
+  )
+```
+
+## 6. Merge Summary Check
+
+We printed a record-level summary verifying the number of TA boundary
+units at each stage of the cleaning and merging pipeline to confirm that
+no records were unexpectedly dropped or duplicated before spatial
+analysis.
+
+```{r merge-summary, message=FALSE, warning=FALSE}
+cat("\nMerged dataset summary:\n")
+cat("Boundary units after excluding TA Nkula:", nrow(ta_boundaries_clean), "\n")
+cat("Unique boundary units after combining duplicates:", nrow(ta_boundaries_unique), "\n")
+cat("Units with prevalence data:", n_distinct(ta_data$ta_name), "\n")
+cat("Units included in spatial analysis:", nrow(ta_lisa), "\n")
+```
+
+## 7. Create KNN-5 Spatial Weights
+
+We defined spatial relationships between Traditional Authorities using
+K-nearest neighbours (K = 5) based on TA polygon centroids. Weights were
+row-standardised (style = `"W"`) so that each TA's neighbours contribute
+equally regardless of how many neighbours it has. This weight matrix is
+used in both the global Moran's I test and the LISA analysis.
+
+```{r knn5-weights, message=FALSE, warning=FALSE}
+ta_centers <- st_centroid(ta_lisa)
+coords <- st_coordinates(ta_centers)
+knn5 <- knearneigh(coords, k = 5)
+knn5_nb <- knn2nb(knn5)
+lw_knn <- nb2listw(knn5_nb, style = "W", zero.policy = TRUE)
+```
+
+## 8. Spatial Weights Summary
+
+We printed a diagnostic summary of the KNN-5 spatial weights matrix,
+confirming the number of spatial units and the distribution of neighbour
+counts per unit. This verifies that the weight matrix was constructed
+correctly before proceeding to autocorrelation tests.
+
+```{r weights-summary, message=FALSE, warning=FALSE}
+cat("\nSpatial weights created using KNN-5.\n")
+cat("Number of units in spatial weights:", length(knn5_nb), "\n")
+cat("Neighbors per unit:\n")
+print(summary(card(knn5_nb)))
+```
+
+## 9. Global Moran's I Test (Asymptotic)
+
+We tested for global spatial autocorrelation in TA-level teenage
+pregnancy prevalence using the asymptotic Moran's I test, which assumes
+that the standardised statistic follows a normal distribution under the
+null hypothesis of no spatial clustering. The reported statistic,
+expected value under the null, and p-value indicate whether the observed
+spatial pattern is consistent with random geographical variation.
+
+```{r moran-asymptotic, message=FALSE, warning=FALSE}
+moran_asym <- moran.test(ta_lisa$prev, lw_knn, na.action = na.omit)
+cat("Asymptotic Test:\n")
+cat("  Moran's I:", round(moran_asym$statistic, 4), "\n")
+cat("  Expected under null:", round(moran_asym$estimate[2], 4), "\n")
+cat("  P-value:", round(moran_asym$p.value, 4), "\n\n")
+```
+
+## 10. Global Moran's I Permutation Test
+
+We complemented the asymptotic test with a Monte Carlo permutation test
+(999 simulations) that randomly reassigns prevalence values across TAs
+to generate an empirical null distribution. The permutation p-value is
+more robust when the normality assumption may not hold, providing a
+cross-validation of the asymptotic result.
+
+```{r moran-permutation, message=FALSE, warning=FALSE}
+moran_perm <- moran.mc(ta_lisa$prev, lw_knn, nsim = 999, na.action = na.omit)
+cat("Permutation Test, 999 simulations:\n")
+cat("  Moran's I:", round(moran_perm$statistic, 4), "\n")
+cat("  P-value:", round(moran_perm$p.value, 4), "\n")
+
+if (moran_asym$p.value < 0.05) {
+  cat("\n*** SIGNIFICANT SPATIAL CLUSTERING DETECTED, p < 0.05 ***\n")
+} else {
+  cat("\nNo significant spatial clustering detected, p >= 0.05.\n")
+}
+```
+
+## 11. Local Moran's I / LISA Analysis
+
+We computed Local Indicators of Spatial Association (LISA) using
+`localmoran()` to identify individual TAs that contribute significantly
+to the global autocorrelation. Each TA was classified into one of five
+categories based on its quadrant position in the Moran scatter plot and
+the local p-value (α = 0.05): High-High (hotspot), Low-Low (coldspot),
+High-Low or Low-High (spatial outliers), and Not Significant.
+
+```{r lisa-analysis, message=FALSE, warning=FALSE}
+lmi <- localmoran(ta_lisa$prev, lw_knn, na.action = na.omit)
+
+ta_lisa <- ta_lisa %>%
+  mutate(
+    Ii = lmi[, "Ii"],
+    Z_Ii = lmi[, "Z.Ii"],
+    p_lisa = lmi[, "Pr(z != E(Ii))"],
+    lag_z = lag.listw(lw_knn, prev_z),
+    cluster_type = case_when(
+      is.na(prev_z)        ~ "No data",
+      p_lisa >= 0.05       ~ "Not significant",
+      prev_z > 0 & lag_z > 0 ~ "High-High (HOTSPOT)",
+      prev_z < 0 & lag_z < 0 ~ "Low-Low (COLDSPOT)",
+      prev_z > 0 & lag_z < 0 ~ "High-Low (Outlier)",
+      prev_z < 0 & lag_z > 0 ~ "Low-High (Outlier)",
+      TRUE ~ "Other"
+    )
+  )
+
+print(table(ta_lisa$cluster_type))
+```
+
+## 12. Extract Hotspots
+
+We extracted all High-High cluster TAs — areas with above-average
+teenage pregnancy prevalence surrounded by neighbours that also have
+above-average prevalence — and sorted them by prevalence in descending
+order for reporting.
+
+```{r hotspots, message=FALSE, warning=FALSE}
+hotspots <- ta_lisa %>%
+  filter(cluster_type == "High-High (HOTSPOT)") %>%
+  arrange(desc(prev_pct)) %>%
+  st_drop_geometry() %>%
+  select(ta_name, n_teen, prev_pct, p_lisa, cluster_type)
+
+if (nrow(hotspots) > 0) { print(hotspots) } else { cat("No significant hotspots detected.\n") }
+```
+
+## 13. Extract Coldspots
+
+We extracted all Low-Low cluster TAs — areas with below-average teenage
+pregnancy prevalence surrounded by similarly low-prevalence neighbours —
+and sorted them by prevalence in ascending order. Coldspots indicate
+geographic areas of relatively low burden that may serve as comparators
+or reflect protective conditions.
+
+```{r coldspots, message=FALSE, warning=FALSE}
+coldspots <- ta_lisa %>%
+  filter(cluster_type == "Low-Low (COLDSPOT)") %>%
+  arrange(prev_pct) %>%
+  st_drop_geometry() %>%
+  select(ta_name, n_teen, prev_pct, p_lisa, cluster_type)
+
+if (nrow(coldspots) > 0) { print(coldspots) } else { cat("No significant coldspots detected.\n") }
+```
+
+## 14. Hotspot Summary Table
+
+We produced an interactive searchable summary table showing all
+Traditional Authorities with their unweighted sample sizes, pregnant
+counts, weighted prevalence, LISA p-values, and cluster classification.
+Small-sample TAs are flagged to alert readers to interpret those
+estimates with caution.
+
+```{r hotspot-summary-table, message=FALSE, warning=FALSE}
+ta_lisa %>%
+  st_drop_geometry() %>%
+  select(ta_name, n_teen, n_pregnant, prev_pct, p_lisa, cluster_type, flag_small) %>%
+  arrange(desc(prev_pct)) %>%
+  mutate(sample_size_flag = if_else(flag_small, "⚠", "✓")) %>%
+  select(-flag_small) %>%
+  gt() %>%
+  tab_header(title = "Teen Pregnancy by Traditional Authority",
+             subtitle = "Malawi MICS 2019–20: Survey-Weighted TA-Level LISA Analysis") %>%
+  fmt_number(columns = c(prev_pct, p_lisa), decimals = 2) %>%
+  fmt_number(columns = c(n_teen, n_pregnant), decimals = 0) %>%
+  cols_label(ta_name = "Traditional Authority", n_teen = "N Teens",
+             n_pregnant = "Pregnant", prev_pct = "Prevalence %",
+             p_lisa = "LISA p-value", cluster_type = "Cluster Type",
+             sample_size_flag = "Sample") %>%
+  opt_interactive(use_search = TRUE, use_sorting = TRUE) %>%
+  tab_options(table.font.size = px(11))
+```
+
+## 15. Moran Scatter Plot and LISA Map
+
+We produced a two-panel figure combining a Moran scatter plot
+(standardized prevalence vs. spatially lagged prevalence) and a LISA
+choropleth map. The scatter plot annotates the global Moran's I
+statistic and p-value and colors each TA by its LISA quadrant. The LISA
+map displays statistically significant clusters (p \< 0.05) with
+distinct colors for each LISA category, non-significant TAs in grey, and
+district boundaries overlaid as dashed lines to provide geographic
+context. A north arrow and scale bar are included.
+
+```{r lisa-map, message=FALSE, warning=FALSE, fig.width=14, fig.height=7}
+
+# Step 1: Compute quadrant classification for plotting
+lisa <- localmoran(ta_lisa$prev, lw_knn, zero.policy = TRUE)
+
+ta_lisa <- ta_lisa %>%
+  mutate(
+    local_I = lisa[, "Ii"],
+    local_p = lisa[, "Pr(z != E(Ii))"],
+    z_prev  = as.numeric(scale(prev)),
+    z_lag   = as.numeric(scale(lag.listw(lw_knn, prev, zero.policy = TRUE))),
+    quadrant = factor(case_when(
+      z_prev > 0 & z_lag > 0 & local_p < 0.05 ~ "High-High (hotspot)",
+      z_prev < 0 & z_lag < 0 & local_p < 0.05 ~ "Low-Low (coldspot)",
+      z_prev > 0 & z_lag < 0 & local_p < 0.05 ~ "High-Low (outlier)",
+      z_prev < 0 & z_lag > 0 & local_p < 0.05 ~ "Low-High (outlier)",
+      TRUE ~ "Not significant"
+    ), levels = c("High-High (hotspot)", "Low-Low (coldspot)",
+                  "High-Low (outlier)", "Low-High (outlier)", "Not significant"))
+  )
+
+table(ta_lisa$quadrant)
+
+# Step 2: Colors
+lisa_cols <- c(
+  "High-High (hotspot)" = "#E31A1C",
+  "Low-Low (coldspot)"  = "#1F78B4",
+  "High-Low (outlier)"  = "#FF7F00",
+  "Low-High (outlier)"  = "#A6CEE3",
+  "Not significant"     = "grey80"
+)
+
+# Step 3: Moran scatter plot
+p_moran_scatter <- ggplot(st_drop_geometry(ta_lisa), aes(x = z_prev, y = z_lag)) +
+  geom_hline(yintercept = 0, colour = "grey60", linewidth = 0.4) +
+  geom_vline(xintercept = 0, colour = "grey60", linewidth = 0.4) +
+  geom_point(aes(colour = quadrant, fill = quadrant), shape = 21, size = 2.4, stroke = 0.4, alpha = 0.85) +
+  geom_smooth(method = "lm", se = TRUE, colour = "grey20", fill = "grey80", linewidth = 0.8) +
+  annotate("text", x = Inf, y = -Inf,
+    label = sprintf("Moran's I = %.3f\np = %.4f", moran_perm$statistic, moran_perm$p.value),
+    hjust = 1.1, vjust = -0.5, size = 3.5, colour = "grey20", fontface = "italic") +
+  annotate("text", x = Inf,  y = Inf,  label = "High-High", hjust = 1.1,  vjust = 1.5,  size = 3, colour = "#E31A1C", fontface = "bold") +
+  annotate("text", x = -Inf, y = -Inf, label = "Low-Low",   hjust = -0.1, vjust = -0.5, size = 3, colour = "#1F78B4", fontface = "bold") +
+  annotate("text", x = Inf,  y = -Inf, label = "High-Low",  hjust = 1.1,  vjust = -2.2, size = 3, colour = "#FF7F00", fontface = "bold") +
+  annotate("text", x = -Inf, y = Inf,  label = "Low-High",  hjust = -0.1, vjust = 1.5,  size = 3, colour = "#A6CEE3", fontface = "bold") +
+  scale_colour_manual(values = lisa_cols, guide = "none") +
+  scale_fill_manual(values = lisa_cols, guide = "none") +
+  labs(title = "Moran scatter plot",
+       x = "Standardized teen pregnancy prevalence", y = "Spatially lagged prevalence") +
+  theme_classic(base_size = 12) +
+  theme(plot.title = element_text(face = "bold", size = 12), panel.grid = element_blank())
+
+## Extract district centroids for labeling (instead of TA labels)
+district_labels <- districts %>%
+  st_centroid() %>%
+  mutate(district_name = GEONAMES)
+
+# Then in the ggplot, replace the two geom_label_repel blocks with:
+
+p_lisa_map <- ggplot() +
+  # Base TA boundaries
+  geom_sf(data = ta_boundaries_unique, fill = "grey96", colour = "grey75", linewidth = 0.25) +
+  # Non-significant TAs in grey
+  geom_sf(data = ta_lisa %>% filter(quadrant == "Not significant"),
+          fill = "grey80", colour = "white", linewidth = 0.15) +
+  # Significant TAs with LISA colors (main clusters)
+  geom_sf(data = ta_lisa %>% filter(quadrant != "Not significant"),
+          aes(fill = quadrant), colour = "white", linewidth = 0.2) +
+  # District boundaries overlay - transparent fill with bold dark border
+  geom_sf(data = districts, fill = NA, colour = "#000000", linewidth = 0.2, linetype = "solid", alpha = 0.7) +
+  annotation_north_arrow(location = "tl", which_north = "true",
+    height = unit(1.0, "cm"), width = unit(1.0, "cm"),
+    pad_x = unit(0.2, "cm"), pad_y = unit(0.2, "cm"),
+    style = north_arrow_fancy_orienteering(
+      text_size = 7, text_face = "bold", line_width = 0.8,
+      text_col = "grey20", fill = c("grey20", "white"))) +
+  annotation_scale(location = "bl", width_hint = 0.30, text_cex = 0.65,
+                   line_width = 0.6, height = unit(0.18, "cm"),
+                   pad_x = unit(0.2, "cm"), style = "ticks") +
+  scale_fill_manual(name = "LISA cluster type", values = lisa_cols, drop = FALSE) +
+  labs(title = "LISA map: significant local spatial clusters") +
+  coord_sf(datum = NA) +
+  theme_minimal(base_size = 12) +
+  theme(panel.grid = element_blank(), axis.title = element_blank(),
+        axis.text = element_blank(), axis.ticks = element_blank(),
+        legend.position = "bottom", legend.title = element_text(face = "bold"),
+        plot.title = element_text(face = "bold", size = 12)) +
+  guides(fill = guide_legend(nrow = 2, ncol = 3, override.aes = list(linewidth = 0.4)))
+
+# Step 5: Combine and display
+p_lisa_combined <- p_moran_scatter + p_lisa_map +
+  plot_annotation(
+    title = "Spatial autocorrelation in teen pregnancy prevalence, Malawi MICS 2019–20",
+    subtitle = sprintf("Left: Moran scatter plot (I = %.3f, p = %.4f). Right: LISA map at p < 0.05.",
+                       moran_perm$statistic, moran_perm$p.value),
+    caption = "k = 5 nearest neighbours, row-standardised. TA Nkula excluded. District boundaries (dashed lines) overlaid for geographic context. LISA p-values not corrected for multiple comparisons.",
+    theme = theme(plot.title = element_text(face = "bold", size = 13, hjust = 0),
+                  plot.subtitle = element_text(size = 10, colour = "grey35", hjust = 0),
+                  plot.caption = element_text(size = 8, colour = "grey45", hjust = 0),
+                  plot.margin = margin(8, 8, 6, 8))
+  ) + plot_layout(widths = c(1, 1))
+
+p_lisa_combined
+```
+
+## 16. Save LISA Figure
+
+We exported the combined LISA figure in two formats: a high-resolution
+PNG (300 dpi) for manuscript submission and a TIFF (600 dpi, LZW
+compression) for journal requirements. Both files are saved to the
+working directory.
+
+```{r save-figure, message=FALSE, warning=FALSE}
+ggsave(
+  "Figure_LISA_Teen_Pregnancy_Malawi_MICS.png",
+  plot = p_lisa_combined,
+  dpi = 300,
+  width = 14,
+  height = 7,
+  units = "in",
+  bg = "white"
+)
+
+ggsave(
+  "Figure_LISA_Teen_Pregnancy_Malawi_MICS.tiff",
+  plot = p_lisa_combined,
+  device = "tiff",
+  dpi = 600,
+  width = 14,
+  height = 7,
+  units = "in",
+  compression = "lzw"
+)
+```
+
+## 17. Export Spatial Results
+
+We exported the final `ta_lisa` spatial object as a shapefile for use in
+external GIS software (ArcGIS or QGIS), enabling further cartographic
+styling, overlay analysis, or reporting. The exported file includes all
+LISA statistics, cluster classifications, prevalence estimates, and
+sample size flags.
+
+```{r export-results, message=FALSE, warning=FALSE}
+cat("\n", strrep("=", 80), "\n", sep = "")
+
+cat("EXPORTING RESULTS\n")
+
+cat(strrep("=", 80), "\n", sep = "")
+
+st_write(
+  ta_lisa,
+  "ta_lisa_results_with_boundaries.shp",
+  delete_dsn = TRUE
+)
+
+cat("Exported: ta_lisa_results_with_boundaries.shp\n")
+
+cat("Use this in ArcGIS or QGIS to map hotspots, coldspots, and prevalence.\n")
+```
+
+## 18. Export CSV Results
+
+We exported the non-spatial LISA results as a flat CSV file for use in
+supplementary tables, secondary analysis, or sharing with co-authors who
+may not work in R or GIS environments.
+
+```{r export-csv, message=FALSE, warning=FALSE}
+write_csv(
+  ta_lisa %>% st_drop_geometry(),
+  "ta_lisa_results.csv"
+)
+
+cat("Exported: ta_lisa_results.csv\n")
+```
+
+## 19. Export Summary Statistics
+
+We wrote a plain-text summary report containing the full global Moran's
+I test output (asymptotic and permutation), the LISA cluster
+classification counts, and the hotspot and coldspot TA lists. This file
+serves as a reproducible record of all key spatial statistics produced
+by the analysis.
+
+```{r export-summary-stats, message=FALSE, warning=FALSE}
+sink("ta_lisa_summary_statistics.txt")
+
+cat("MALAWI MICS 2019–20: TA-LEVEL LISA ANALYSIS OF TEEN PREGNANCY\n")
+cat(strrep("=", 80), "\n\n", sep = "")
+
+cat("GLOBAL MORAN'S I TEST:\n")
+print(moran_asym)
+
+cat("\n\nPERMUTATION TEST, 999 simulations:\n")
+print(moran_perm)
+
+cat("\n\nCLUSTER CLASSIFICATION:\n")
+print(table(ta_lisa$cluster_type))
+
+cat("\n\nHOTSPOTS, High-High:\n")
+if (nrow(hotspots) > 0) {
+  print(hotspots)
+} else {
+  cat("None detected\n")
+}
+
+cat("\n\nCOLDSPOTS, Low-Low:\n")
+if (nrow(coldspots) > 0) {
+  print(coldspots)
+} else {
+  cat("None detected\n")
+}
+
+sink()
+
+cat("Exported: ta_lisa_summary_statistics.txt\n")
+```
+
+# PART V: Discussion and Interpretation
+
+## Key Findings: Teenage Pregnancy in Malawi
+
+### Prevalence and Sociodemographic Risk Factors
+
+Among the 5,758 adolescent females (weighted n = 5,538) examined in this
+analysis, the overall prevalence of teenage pregnancy was 25.5%.
+Substantial sociodemographic disparities were evident in the descriptive
+analysis (Table 2), with prevalence ranging from 10.3% among the richest
+households to 42.8% among the poorest—a 4.2-fold difference. Education
+was similarly patterned: girls with primary education or lower had a
+prevalence of 31.5%, compared to 14.7% among those with secondary
+education or higher, reflecting 2.1-fold disparity. Rural residence
+carried 1.9 times the prevalence of urban residence (29.6% vs. 15.3%).
+
+The strongest univariable associations with pregnancy (Table 3, Model 1)
+were current marital status (OR 51.1 for currently married vs. not in
+union, 95% CI 38.5–67.8), contraceptive use (OR 11.3, 95% CI 7.45–17.1),
+and wealth index (OR 6.50 for poorest vs. richest, 95% CI 4.86–8.69).
+These patterns align with demographic expectations: marriage and union
+formation precede and facilitate childbearing among adolescents; current
+contraceptive use is a strong marker of prior reproductive experience;
+and economic hardship (poverty) is a documented risk factor for early
+pregnancy in low-income settings.
+
+### Adjusted Risk Factor Model
+
+In the multivariable model adjusted for all six sociodemographic
+exposures (Table 3, Model 2, n = 4,776 unweighted; n = 4,633 weighted),
+the adjusted odds ratios (aORs) revealed several important patterns:
+
+1.  **Wealth gradient persisted:** Compared to the richest quintile,
+    girls in lower wealth quintiles retained significantly elevated
+    risk, with aORs ranging from 2.71 (second quintile, 95% CI
+    1.45–5.05) to 2.87 (poorest, 95% CI 1.55–5.32). The gradient was
+    remarkably consistent across the four lower quintiles, confirming
+    that poverty-related factors are robust risk drivers even after
+    accounting for education, residence, marital status, contraception,
+    and insurance.
+
+2.  **Marital status dominated:** Marriage or co-habitation remained the
+    strongest predictor after adjustment, with aOR 35.3 (95% CI
+    24.9–50.0) for currently married girls and aOR 40.7 (95% CI
+    17.9–92.5) for those living with a partner. This reflects the
+    biological reality that marriageability and childbearing are tightly
+    coupled in this setting and that married adolescents are nearly
+    certain to be pregnant or to become pregnant within the marriage.
+
+3.  **Education lost statistical significance after adjustment** (aOR
+    0.77 for secondary or higher vs. primary or lower, 95% CI
+    0.56–1.06). This suggests that much of education's protective effect
+    in the crude analysis operates through its correlation with wealth,
+    marital status, or other mediators—a finding worth exploring in
+    future mediation analyses.
+
+4.  **Place of residence also became non-significant** (aOR 0.68 for
+    rural vs. urban, 95% CI 0.40–1.17), implying that the rural–urban
+    disparity is largely confounded by differences in wealth, marital
+    patterns, and education across these regions.
+
+5.  **Contraceptive use remained strongly associated with pregnancy**
+    (aOR 11.7, 95% CI 7.02–19.5, p \< 0.001). However, this association
+    is most naturally interpreted as **reverse causality**: girls who
+    are pregnant or have experienced pregnancy are more likely to adopt
+    contraception to prevent future pregnancy. This variable marks
+    reproductive history rather than a causal risk factor and should not
+    be interpreted as "using contraception increases pregnancy risk."
+    Its inclusion in the multivariable model provides adjustment for
+    reproductive experience among the unpregnant (those not yet pregnant
+    or no longer pregnant at survey), but causal interpretation is
+    unwarranted.
+
+6.  **Health insurance had insufficient precision** to inform policy:
+    only 1 pregnant case was observed among 22 weighted insured
+    adolescents (aOR 0.72, 95% CI 0.11–4.75). The wide confidence
+    interval encompasses both protection and increased risk. This
+    variable adds little information and reflects both the low insurance
+    coverage in the survey and its weak association with pregnancy
+    prevalence in this population. Results should not be interpreted as
+    evidence of insurance protecting against or increasing pregnancy
+    risk.
+
+### Spatial Clustering and Geographic Hotspots
+
+Global spatial autocorrelation analysis revealed **statistically
+significant clustering** of teenage pregnancy at the Traditional
+Authority level. Both the asymptotic Moran's I test (I = 2.998, p =
+0.0014) and the permutation test with 999 simulations (I = 0.094, p =
+0.002) confirmed that TAs with high (or low) prevalence are surrounded
+by geographically similar TAs—contrary to random spatial variation. This
+clustering signal justifies and validates the spatial analysis approach.
+
+Local Indicators of Spatial Association (LISA) classified the 331
+surveyed TAs into five categories: - **6 hotspots** (High-High,
+spatially significant clusters of above-average prevalence) - **21
+coldspots** (Low-Low, spatially significant clusters of below-average
+prevalence) - **10 outliers** (7 High-Low; 3 Low-High) - **294 not
+significant**
+
+The six hotspots identified were: 1. **Ngabu Urban** (71.4% prevalence,
+n = 7) — located in Lower Shire, Southern Region 2. **TA Changata**
+(56.3%, n = 16) — Lower Shire 3. **TA Sitola** (42.9%, n = 7) — Lower
+Shire 4. **TA Mbenje** (42.6%, n = 28) — Lower Shire 5. **TA Ngabu**
+(38.0%, n = 69) — Lower Shire (larger sample) 6. **Mwabvi Game Reserve**
+(28.6%, n = 7) — Lower Shire
+
+These six TAs form a **coherent geographic cluster in the Lower Shire
+region** of southern Malawi, suggesting localized drivers of high
+teenage pregnancy (e.g., regional differences in girls' education
+access, marriage norms, economic opportunities, health service
+availability, or social norms around early childbearing). Further
+investigation into district-level interventions, service gaps, and
+community-level risk and protective factors in the Lower Shire is
+warranted.
+
+**Caveat on hotspot sample sizes:** Three of the six hotspots (Ngabu
+Urban, TA Sitola, Mwabvi Game Reserve) have unweighted samples of only 7
+girls each. While the LISA test is statistically significant (p \< 0.05
+for each), these estimates are based on very small samples and should be
+interpreted with appropriate caution. The two coldspots with zero
+prevalence (Area 21, Area 22, etc.) are similarly small-sample urban
+wards; their classification as coldspots is statistically valid but may
+reflect chance variation or geographic concentration of more
+economically advantaged populations in these urban areas rather than
+deep structural protection from pregnancy.
+
+### Spatial Heterogeneity and Implications for Policy
+
+The identification of a high-prevalence cluster in the Lower Shire
+suggests that **one-size-fits-all national approaches to adolescent
+sexual and reproductive health may be insufficient**. Targeted
+interventions—including enhanced reproductive health education, improved
+contraceptive access, economic opportunity expansion for girls, and
+marriage postponement programming—may be particularly impactful if
+concentrated in high-prevalence TAs and neighboring regions.
+
+Conversely, coldspots (predominantly urban administrative units with
+zero or near-zero prevalence in the survey) may offer comparative
+examples of protective factors to study and potentially scale.
+
+### Limitations
+
+1.  **Small sample sizes in spatial units:** Many TAs had fewer than 20
+    teen respondents (some fewer than 5), limiting the precision of
+    prevalence estimates and the stability of LISA classifications.
+    Estimates for very-small-sample TAs should be interpreted as
+    preliminary or flagged for future rounds of larger-scale
+    surveillance.
+
+2.  **Cross-sectional design:** This analysis cannot establish
+    causality. The associations observed in Table 3, particularly for
+    contraceptive use, are subject to reverse causality and other
+    confounding not measured in the MICS (e.g., age at sexual debut,
+    partner age, access to family planning, community-level norms).
+
+3.  **GPS jittering:** Cluster coordinates in the MICS are jittered (+/-
+    2–10 km urban, +/- 5 km rural) for confidentiality, which can
+    introduce noise into spatial analyses. TAs with few clusters may be
+    more sensitive to this jitter.
+
+4.  **Missing data:** While item-level missingness was low (\<2%), six
+    girls (0.1%) were excluded due to missing age or pregnancy status.
+    Complete-case analysis in the multivariable model (n = 4,776)
+    excludes girls with missing data on any covariate; patterns of
+    missingness by wealth or education were not formally examined.
+
+5.  **Unmeasured confounding:** The MICS does not include information on
+    girls' age at sexual debut, partner age, access to and quality of
+    reproductive health services, community and religious norms about
+    early marriage and childbearing, or intergenerational transmission
+    of early pregnancy. These factors may be important mediators or
+    confounders.
+
+6.  **Health insurance prevalence:** Only 0.4% of adolescent respondents
+    reported health insurance, limiting statistical power and
+    generalizability of insurance-related estimates.
+
+### Strengths
+
+-   **Complex survey design properly accounted for** via two-stage
+    stratified cluster sampling specification in the `survey` package,
+    ensuring estimates are representative of the adolescent population
+    aged 15–19 in Malawi.
+-   **Survey-weighted and internally consistent analysis:** All
+    prevalence, regression, and spatial analyses used the same weighting
+    scheme and complete-case sample, avoiding discrepancies between
+    tables.
+-   **Convergent spatial evidence:** Both asymptotic and permutation
+    Moran's I tests confirm clustering, increasing confidence in the
+    spatial signal.
+-   **Transparent reference categories and model specification:** All
+    reference categories are pre-specified, reported, and held constant
+    across tables, facilitating reproducibility and policy
+    communication.
+
+## 20. Save R Workspace
+
+We saved the complete R workspace to an `.RData` file so that all
+objects — spatial weights, survey designs, prevalence estimates, and
+LISA results — can be reloaded in future sessions without re-running the
+full analysis pipeline.
+
+```{r save-rdata, message=FALSE, warning=FALSE}
+save.image("ta_lisa_analysis_with_boundaries.RData")
+
+cat("Saved: ta_lisa_analysis_with_boundaries.RData\n")
+```
+
+## 21. Analysis Complete
+
+This chunk prints a completion message and a checklist of recommended
+next steps for post-processing and reporting. All analytical outputs —
+tables, figures, shapefiles, and summary statistics — are saved to the
+working directory.
+
+```{r analysis-complete, message=FALSE, warning=FALSE}
+cat("\n", strrep("=", 80), "\n", sep = "")
+
+cat("ANALYSIS COMPLETE\n")
+
+cat(strrep("=", 80), "\n", sep = "")
+
+cat("\nNext steps:\n")
+
+cat("1. Open ArcGIS or QGIS.\n")
+
+cat("2. Load ta_lisa_results_with_boundaries.shp.\n")
+
+cat("3. Style by cluster_type to visualize hotspots and coldspots.\n")
+
+cat("4. Or style by prev_pct to show the prevalence gradient.\n")
+```
